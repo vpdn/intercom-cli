@@ -42,13 +42,14 @@ export function conversationCommands(program) {
   conversations
     .command('get <id>')
     .description('Get conversation details')
-    .option('--parts', 'include conversation parts (messages)')
+    .option('--metadata-only', 'show only conversation metadata without messages')
     .action(async (id, options) => {
       try {
         const parentOptions = conversations.parent.opts();
         const format = parentOptions.format || 'table';
         
-        const params = options.parts ? { display_as: 'plaintext' } : {};
+        // Always fetch conversation parts unless metadata-only is requested
+        const params = options.metadataOnly ? {} : { display_as: 'plaintext' };
         const conversation = await client.get(`/conversations/${id}`, params);
         
         if (format === 'json') {
@@ -57,20 +58,43 @@ export function conversationCommands(program) {
           // Display conversation info
           formatOutput(conversation, format, columnConfigs.conversations);
           
-          // Display conversation parts if requested
-          if (options.parts && conversation.conversation_parts?.conversation_parts) {
+          // Display conversation messages unless metadata-only is requested
+          if (!options.metadataOnly) {
             console.log(chalk.cyan('\nConversation Messages:'));
-            console.log(chalk.gray('─'.repeat(60)));
+            console.log(chalk.gray('═'.repeat(80)));
             
-            conversation.conversation_parts.conversation_parts.forEach((part, index) => {
-              const author = part.author?.name || part.author?.email || 'Unknown';
-              const authorType = part.author?.type || 'unknown';
-              const time = new Date(part.created_at * 1000).toLocaleString();
+            // Display initial conversation source if available
+            if (conversation.source?.body) {
+              const sourceAuthor = conversation.source.author?.name || 
+                                 conversation.source.author?.email || 
+                                 'Customer';
+              const sourceType = conversation.source.author?.type || 'user';
+              const sourceTime = new Date(conversation.created_at * 1000).toLocaleString();
               
-              console.log(chalk.yellow(`[${index + 1}] ${author} (${authorType}) - ${time}`));
-              console.log(part.body || 'No message body');
-              console.log(chalk.gray('─'.repeat(60)));
-            });
+              console.log(chalk.blue(`[Initial Message] ${sourceAuthor} (${sourceType}) - ${sourceTime}`));
+              console.log(conversation.source.body);
+              console.log(chalk.gray('─'.repeat(80)));
+            }
+            
+            // Display conversation parts
+            if (conversation.conversation_parts?.conversation_parts?.length > 0) {
+              conversation.conversation_parts.conversation_parts.forEach((part, index) => {
+                const author = part.author?.name || part.author?.email || 'Unknown';
+                const authorType = part.author?.type || 'unknown';
+                const time = new Date(part.created_at * 1000).toLocaleString();
+                
+                const authorColor = authorType === 'admin' ? chalk.green : 
+                                  authorType === 'user' ? chalk.blue : 
+                                  chalk.gray;
+                
+                console.log(authorColor(`[${index + 1}] ${author} (${authorType}) - ${time}`));
+                console.log(part.body || chalk.italic('No message body'));
+                console.log(chalk.gray('─'.repeat(80)));
+              });
+            } else if (!conversation.source?.body) {
+              // No messages at all
+              console.log(chalk.yellow('This conversation has no messages.'));
+            }
           }
         }
       } catch (error) {

@@ -74,7 +74,7 @@ function formatValue(value, type) {
 
   switch (type) {
     case 'date':
-      return new Date(value).toLocaleString();
+      return new Date(value * 1000).toLocaleString();
     
     case 'boolean':
       return value ? chalk.green('Yes') : chalk.red('No');
@@ -106,9 +106,9 @@ export const columnConfigs = {
   ],
   
   conversations: [
-    { key: 'id', header: 'ID', width: 15 },
-    { key: 'created_at', header: 'Created', type: 'date', width: 20 },
-    { key: 'updated_at', header: 'Updated', type: 'date', width: 20 },
+    { key: 'id', header: 'ID', width: 20 },
+    { key: 'created_at', header: 'Created', type: 'date', width: 25 },
+    { key: 'updated_at', header: 'Updated', type: 'date', width: 25 },
     { key: 'state', header: 'State', width: 15 },
     { key: 'source.type', header: 'Source', width: 15 },
     { key: 'assignee.name', header: 'Assignee', width: 20 }
